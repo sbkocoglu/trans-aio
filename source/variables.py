@@ -1,3 +1,5 @@
+import pandas as pd
+
 trans_version = 0.01
 
 trans_info = {
@@ -8,9 +10,9 @@ trans_info = {
     "target_language" : None,
     "mqxliff_df" : None,
     "tm_path" : None,
-    "tm_df" : None,
+    "tm_df" : pd.DataFrame(columns=['Source', 'Target']),
     "tb_path" : None,
-    "tb_df" : None,
+    "tb_df" : pd.DataFrame(),
     "segments_translated" : 0,
     "tm_match" : 0,
     "tm_match_partial" : 0,

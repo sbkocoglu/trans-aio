@@ -39,7 +39,7 @@ class TranslatorThread(QThread):
         progress = 0
         variables.trans_info["current_step"] += 1
         self.qWidget.main_progress_label.setText(f"Analyzing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
-        self.qWidget.main_progress_bar.setValue(int({variables.trans_info["current_step"]} / {variables.trans_info["total_steps"]}))
+        self.qWidget.main_progress_bar.setValue(int(variables.trans_info["current_step"] / variables.trans_info["total_steps"]))
 
         for index, row in trans_df.iterrows():    
             if is_number(row['Source']):
@@ -72,7 +72,7 @@ class TranslatorThread(QThread):
                         
             new_source = row['Source']
 
-            if not variables.trans_info['translation_memory'].loc[variables.trans_info['translation_memory']['Source'] == new_source].empty:
+            if not variables.trans_info['tm_df'].loc[variables.trans_info['tm_df']['Source'] == new_source].empty:
                 print(f"Duplicate entry found for source: {new_source}")
             else:
                 new_target = translated_segment
@@ -139,14 +139,6 @@ class TranslatorUI(QWidget):
         self.sub_progress_label.setText("Converting Xliff into a dataframe...")
         self.current_thread.finished.connect(self.start_machine_translation)
 
-        
-    def cancel_process(self):
-        self.current_thread.terminate()
-        self.current_thread.exit()
-        self.current_thread.quit()
-        self.current_thread.wait()
-        self.close()
-
     def start_machine_translation(self):
         self.current_thread = TranslatorThread(self)
         self.current_thread.start()
@@ -155,3 +147,10 @@ class TranslatorUI(QWidget):
 
     def start_llm_translation(self):
         self.current_thread = None
+
+    def cancel_process(self):
+        self.current_thread.terminate()
+        self.current_thread.exit()
+        self.current_thread.quit()
+        self.current_thread.wait()
+        self.close()

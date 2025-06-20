@@ -23,8 +23,8 @@ def deepl_translate(row, translation_memory=None):
     translator = deepl.Translator(variables.deepl_api)
     
     result = translator.translate_text(text=source_text, 
-                                       target_lang=source_language, 
-                                       source_lang=target_language,
+                                       source_lang=source_language.upper(),
+                                       target_lang=target_language.upper(), 
                                        context=segment_context, 
                                        tag_handling='xml',
                                        )
