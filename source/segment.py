@@ -12,6 +12,8 @@ def check_tm(segment: str, dataframe: pd.DataFrame, source_col : str ="Source", 
 
     Returns -> highest fuzzy match as pd.Series() or an empty pd.Series() if no valid translation memory
     """
+    if dataframe == None:
+        return pd.Series()
     if dataframe.empty:
         return pd.Series()
     

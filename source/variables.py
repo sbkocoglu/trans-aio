@@ -21,3 +21,4 @@ trans_info = {
     }
 
 trans_save = None
+deepl_api = None

@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QApplication
 import re, chardet, string, variables
 import pandas as pd
 import lxml.etree as etree
 from segment import create_memoq_elements_dict
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtWidgets import QApplication
+
 
 class AnalyzerObject(QObject):
     update_progress_signal = pyqtSignal(int)
@@ -39,7 +40,10 @@ class AnalyzerThread(QThread):
         analysis_length = sum(1 for _ in root.iter('{urn:oasis:names:tc:xliff:document:1.2}trans-unit'))       
         completed_analysis = 0
         progress_update_treshold = 0
-        variables.trans_info["current_step"] = 1
+        variables.trans_info["current_step"] += 1
+        self.qWidget.main_progress_label.setText(f"Analyzing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
+        main_progress = variables.trans_info["current_step"] / variables.trans_info["total_steps"] * 100
+        self.qWidget.main_progress_bar.setValue(round(main_progress))
 
         for trans_unit in root.iter("{urn:oasis:names:tc:xliff:document:1.2}trans-unit"):
             trans_id = trans_unit.get("id")
@@ -61,7 +65,7 @@ class AnalyzerThread(QThread):
 
             rows.append({"Segment": int(trans_id),"Source": source, "Target": target, "Locked" : is_locked, "Context" : note_text})
             completed_analysis += 1
-            progress = (completed_analysis / completed_analysis) * 100 
+            progress = (completed_analysis / analysis_length) * 100 
             if progress > progress_update_treshold + 5:
                 self.analyzer_object.update_progress_signal.emit(round(progress))
                 progress_update_treshold += 5
@@ -69,6 +73,7 @@ class AnalyzerThread(QThread):
         analyzed_df = pd.DataFrame(rows)
         analyzed_df.reset_index(drop=True, inplace=True)
         variables.trans_info['mqxliff_df'] = analyzed_df
+        self.analyzer_object.update_progress_signal.emit(100)
 
     def update_progress_bar(self, progress):
         QApplication.processEvents()  
