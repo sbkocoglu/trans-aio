@@ -35,7 +35,6 @@ def deepl_translate(row, translation_memory=None):
         translation_log = f'Source:\n{source_text}\nTM:{translation_memory}\nTranslation improved by DeepL\nTranslation:'
     else:
         translation_log = f'Source:\n{source_text}\nTranslated by DeepL\nTranslation:'
-
     return deepl_translation, translation_log
 
 def lang_code_fix(lang_code):
