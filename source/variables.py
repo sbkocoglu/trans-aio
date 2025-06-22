@@ -23,10 +23,10 @@ trans_info = {
     }
 
 trans_save = None
-deepl_api = None
+deepl_api = ""
 default_translation = "MT"
 default_revision = "MT"
-openAI_api = None
+openAI_api = ""
 openAI_model = "gpt-4.1"
 
 language_locale = {

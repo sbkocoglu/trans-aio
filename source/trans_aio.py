@@ -4,11 +4,14 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 from xliff import csv_columns, csv_termbase_to_df
 from translate import TranslatorUI
+from settings_ui import SettingsUI
+from system import load_env
 
 class MainUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
+        load_env()
 
     def initUI(self):
         self.setWindowTitle("TransAIO")
@@ -16,8 +19,9 @@ class MainUI(QMainWindow):
 
         top_menubar = self.menuBar()
         self.settings_menu = top_menubar.addMenu("Settings")
-        llm_settings_action = QAction("LLM Settings", self)
+        llm_settings_action = QAction("Translation Settings", self)
         self.settings_menu.addAction(llm_settings_action)
+        self.settings_menu.triggered.connect(self.settings_ui)
 
         self.help_menu = top_menubar.addMenu("Help")
         self.about_action = QAction("About", self)
@@ -94,6 +98,10 @@ class MainUI(QMainWindow):
     def about_dialog(self):
         about_message = f"TransAIO - All-in-one translation tool.\nDeveloped by Serkan B. Kocoglu.\nVisit the GitHub page for more: https://github.com/sbkocoglu/trans-aio."
         QMessageBox.about(self, f"About TransAIO", about_message) 
+
+    def settings_ui(self):
+        self.settings_ui = SettingsUI()
+        self.settings_ui.show()
 
 class LanguageSelect(QDialog):
     def __init__(self, language_columns, file_path):

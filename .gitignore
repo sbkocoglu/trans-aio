@@ -2,3 +2,6 @@
 /.vs/
 /source/.vs
 /source/__pycache__
+.env
+/_temp
+*.log
