@@ -1,6 +1,5 @@
 import pandas as pd
-import re
-import html
+import re, variables, html
 
 def check_tm(segment: str, dataframe: pd.DataFrame, source_col : str ="Source", target_col : str ="Target", threshold : int =80):
     """Checks the translation memory to find a fuzzy match. 
@@ -166,3 +165,28 @@ def create_memoq_elements_dict(source_element):
                 result[key] = element_info
 
     return result
+
+def check_termbase(source_text):
+    relevant_glossary = {}
+    for _, row in variables.trans_info["tb_df"].iterrows():
+        try:
+            source = row["Source"]
+            target = row["Target"]
+            source_lower = source.lower()
+            source_text_lower = source_text.lower()
+            if source_lower in source_text_lower:
+                start_index = 0
+                while True:
+                    index = source_text_lower.find(source_lower, start_index)
+                    if index == -1:
+                        break
+                    if index not in relevant_glossary:
+                        relevant_glossary[index] = {
+                            "Source": source,
+                            "Target": target,
+                        }
+                    start_index = index + len(source_lower)   
+        except Exception as e:
+            print(e)
+            pass  
+    return relevant_glossary

@@ -2,6 +2,7 @@ import variables, pathlib, os
 import pandas as pd
 from segment import is_number, check_tm
 from machine_trans import deepl_translate
+from llm_trans import chatGPT_improve_tm, chatGPT_translate
 from xliff import AnalyzerThread, update_mqxliff
 from PyQt6.QtCore import QMutex, QObject, QRunnable, QThread, pyqtSignal, pyqtSlot, QThreadPool
 from PyQt6.QtWidgets import QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget, QApplication
@@ -19,6 +20,11 @@ class TranslatorWorker(QRunnable):
 
     @pyqtSlot()
     def run(self):
+        trans_function = deepl_translate if variables.default_translation == "MT" else chatGPT_translate
+        trans_tm_function = deepl_translate if variables.default_revision == "MT" else chatGPT_improve_tm
+        trans_type = "MT" if variables.default_translation == "MT" else "LLM"
+        trans_tm_type = "MT" if variables.default_revision == "MT" else "LLM"
+
         if is_number(self.row['Source']):
             self.trans_df.at[self.index, 'Translation'] = self.row['Source']
             translated_segment = self.row['Source']
@@ -31,20 +37,20 @@ class TranslatorWorker(QRunnable):
                     self.append_lists(self.row['Segment'], 'N/A', tm_match['Target'], 'Translation skipped, TM match found.')
                     variables.trans_info['tm_match'] += 1                            
                 elif float(tm_match['Similarity']) < 100 and float(tm_match['Similarity']) > 79:
-                    translated_segment, translation_log = deepl_translate(self.row, tm_match['Target'])
+                    translated_segment, translation_log = trans_tm_function(self.row, tm_match['Target'])
                     self.trans_df.at[self.index, 'Translation'] = translated_segment
-                    self.append_lists(self.row['Segment'], translation_log, translated_segment, 'Translated with DeepL, 80%+ TM match.')
+                    self.append_lists(self.row['Segment'], translation_log, translated_segment, f'Translated with {trans_tm_type}, 80%+ TM match.')
                     variables.trans_info['tm_match_partial'] += 1
                     variables.trans_info['segments_translated'] += 1
                 else:
-                    translated_segment, translation_log = deepl_translate(self.row)
+                    translated_segment, translation_log = trans_function(self.row)
                     self.trans_df.at[self.index, 'Translation'] = translated_segment
-                    self.append_lists(self.row['Segment'], translation_log, translated_segment, 'Translated with DeepL.')
+                    self.append_lists(self.row['Segment'], translation_log, translated_segment, f'Translated with {trans_type}.')
                     variables.trans_info['segments_translated'] += 1
             else:
-                translated_segment, translation_log = deepl_translate(self.row)
+                translated_segment, translation_log = trans_function(self.row)
                 self.trans_df.at[self.index, 'Translation'] = translated_segment
-                self.append_lists(self.row['Segment'], translation_log, translated_segment, 'Translated with DeepL.')
+                self.append_lists(self.row['Segment'], translation_log, translated_segment, f'Translated with {trans_type}.')
                 variables.trans_info['segments_translated'] += 1
         new_source = self.row['Source']
 
