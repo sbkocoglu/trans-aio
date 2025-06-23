@@ -113,7 +113,7 @@ class TranslatorThread(QThread):
         if self.current_translation == self.translation_length:
             variables.trans_info['mqxliff_df'] = self.trans_df
             self.save_translation_log(self.segment_numbers, self.translation_logs, self.translation_results, self.translation_details, self.version_list)
-            update_mqxliff(variables.trans_info['file_path'])
+            update_mqxliff(variables.trans_info['mqxliff_df'], variables.trans_info['file_path'], variables.trans_info['save_path'])
 
             self.translator_object.update_progress_signal.emit(100)   
 

@@ -103,7 +103,7 @@ def update_mqxliff(dataframe: pd.DataFrame, file_path: str, save_path: str):
         
         match_row = dataframe[dataframe["Segment"] == int(trans_id)]
         if not match_row.empty:                
-            df_target_text = match_row["LLM"].iloc[0]  
+            df_target_text = match_row["Translation"].iloc[0]  
             df_target_text = str(df_target_text) if not pd.isna(df_target_text) else ""
 
             target_element = trans_unit.find("{urn:oasis:names:tc:xliff:document:1.2}target", namespaces)
