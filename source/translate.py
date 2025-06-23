@@ -97,7 +97,7 @@ class TranslatorThread(QThread):
         self.current_translation = 0
         self.progress = 0
         variables.trans_info["current_step"] += 1
-        self.qWidget.main_progress_label.setText(f"Analyzing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
+        self.qWidget.main_progress_label.setText(f"Translating - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
         self.qWidget.main_progress_bar.setValue(int(variables.trans_info["current_step"] / variables.trans_info["total_steps"]))
 
         for index, row in self.trans_df.iterrows():

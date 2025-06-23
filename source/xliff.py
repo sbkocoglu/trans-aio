@@ -1,10 +1,14 @@
-import re, chardet, string, variables
+import re, chardet, string, variables, zipfile, os
 import pandas as pd
 import lxml.etree as etree
 from segment import create_memoq_elements_dict
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
+def extract_mqxliff(mqxlz_path, extract_to="_temp/extracted_mqxliff"):
+    with zipfile.ZipFile(mqxlz_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+    return [os.path.join(extract_to, f) for f in os.listdir(extract_to) if f.endswith('.mqxliff')]
 
 class AnalyzerObject(QObject):
     update_progress_signal = pyqtSignal(int)
@@ -14,7 +18,7 @@ class AnalyzerThread(QThread):
         super().__init__()
         self.qWidget = qWidget
         self.analyzer_object = AnalyzerObject()
-        self.analyzer_object.update_progress_signal.connect(self.update_progress_bar)
+        self.analyzer_object.update_progress_signal.connect(self.qWidget.update_progress_bar)
 
     def run(self):
         """Anaylzes memoQ xliff file and converts it to a pandas dataframe.
@@ -22,9 +26,14 @@ class AnalyzerThread(QThread):
         Returns a pandas dataframe.
         Rows: Segment: int | Source: string | Target: string | Locked: string | Context: string  
         """
+        file_path = variables.trans_info["file_path"]
 
         parser = etree.XMLParser(strip_cdata=False)
-        tree = etree.parse(variables.trans_info["file_path"], parser) 
+        if file_path.endswith(".mqxliff"):
+            tree = etree.parse(file_path, parser)
+        else:
+            file_path = extract_mqxliff(file_path)[0]
+            tree = etree.parse(file_path, parser)
         root = tree.getroot()
         rows = []
     
@@ -74,10 +83,6 @@ class AnalyzerThread(QThread):
         analyzed_df.reset_index(drop=True, inplace=True)
         variables.trans_info['mqxliff_df'] = analyzed_df
         self.analyzer_object.update_progress_signal.emit(100)
-
-    def update_progress_bar(self, progress):
-        QApplication.processEvents()  
-        self.qWidget.sub_progress_bar.setValue(progress)
 
 def update_mqxliff(dataframe: pd.DataFrame, file_path: str, save_path: str):   
     """Updates a memoQ xliff with a pandas dataframe values and saves it.

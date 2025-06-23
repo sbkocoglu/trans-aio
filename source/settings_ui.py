@@ -1,4 +1,4 @@
-import base64, variables
+import variables
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QComboBox, QPushButton,
     QFormLayout, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy, QMessageBox
@@ -21,7 +21,6 @@ class SettingsUI(QWidget):
         self.deepl_key_input.setPlaceholderText("Enter DeepL API key")
         self.deepl_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.deepl_key_input.setText(variables.deepl_api)
-
 
         self.openai_key_input = QLineEdit()
         self.openai_key_input.setPlaceholderText("Enter OpenAI API key")

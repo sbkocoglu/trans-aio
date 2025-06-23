@@ -36,7 +36,7 @@ class MainUI(QMainWindow):
         self.select_mqxliff_label = QLabel("Add MQXLIFF File")
         self.select_mqxliff_button = QPushButton("Select")
         self.select_mqxliff_button.clicked.connect(
-            lambda: self.select_file("MQXLIFF", "MQXLIFF Files (*.mqxliff)", ".mqxliff", self.select_mqxliff_label)
+            lambda: self.select_file("MQXLIFF", "MQXLIFF Files (*.mqxliff; *.mqxlz)", ".mqxliff", self.select_mqxliff_label)
         )
         select_mqxliff_layout.addWidget(self.select_mqxliff_label)
         select_mqxliff_layout.addWidget(self.select_mqxliff_button)
@@ -69,19 +69,25 @@ class MainUI(QMainWindow):
     def select_file(self, label_prefix: str, file_filter: str, expected_extension: str, label_widget: QLabel):
         file_path, _ = QFileDialog.getOpenFileName(self, f"Select a {label_prefix} File", "", f"{file_filter};;All Files (*)")       
         if file_path:
-            if file_path.endswith(expected_extension):
+            file_ext = os.path.splitext(file_path)[1].lower()
+
+            if expected_extension == ".mqxliff" and file_ext in [".mqxliff", ".mqxlz"]:
                 label_widget.setText(f"{label_prefix}: {os.path.basename(file_path)}")
-                if expected_extension == ".csv":
-                    variables.trans_info["tm_path"] = file_path
-                    language_columns = csv_columns(file_path)
-                    select_language_dialog = LanguageSelect(language_columns, file_path)
-                    select_language_dialog.exec()
-                elif expected_extension == ".tmx":
-                    variables.trans_info["tb_path"] = file_path
-                elif expected_extension == ".mqxliff":
-                    file_name = os.path.basename(file_path)
-                    variables.trans_info["file_name"] = file_name
-                    variables.trans_info["file_path"] = file_path
+                file_name = os.path.basename(file_path)
+                variables.trans_info["file_name"] = file_name
+                variables.trans_info["file_path"] = file_path
+
+            elif expected_extension == ".tmx" and file_ext == ".tmx":
+                label_widget.setText(f"{label_prefix}: {os.path.basename(file_path)}")
+                variables.trans_info["tm_path"] = file_path
+
+            elif expected_extension == ".csv" and file_ext == ".csv":
+                label_widget.setText(f"{label_prefix}: {os.path.basename(file_path)}")
+                variables.trans_info["tb_path"] = file_path
+                language_columns = csv_columns(file_path)
+                select_language_dialog = LanguageSelect(language_columns, file_path)
+                select_language_dialog.exec()
+
             else:
                 QMessageBox.warning(self, "Invalid File", f"Please select a valid {expected_extension} file")
 

@@ -16,12 +16,10 @@ def deepl_translate(row, translation_memory=None):
     
     source_language = re.sub(r'_', '-', variables.trans_info["source_language"])
     target_language = re.sub(r'_', '-', variables.trans_info["target_language"])
-    
     source_language = lang_code_fix(source_language)
     target_language = lang_code_fix(target_language)
     
     translator = deepl.Translator(variables.deepl_api)
-    
     result = translator.translate_text(text=source_text, 
                                        source_lang=source_language.upper(),
                                        target_lang=target_language.upper(), 
