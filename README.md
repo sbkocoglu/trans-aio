@@ -32,7 +32,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/sbkocoglu/trans-aio.git
-cd trans-aio
+cd source
 ```
 
 Install dependencies (venv recommended):
