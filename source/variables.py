@@ -1,8 +1,8 @@
 import pandas as pd
 import os
 
-trans_version = 0.1
-trans_icon = os.path.join(os.path.dirname(__file__), 'img', 'icon.png')
+trans_version = "v0.9.0"
+trans_icon = "img/icon.png"
 
 trans_info = {
     "file_name" : None,

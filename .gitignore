@@ -2,6 +2,9 @@
 /.vs/
 /source/.vs
 /source/__pycache__
+/source/build
+/source/dist
 .env
 /_temp
 *.log
+/source/trans_aio.spec

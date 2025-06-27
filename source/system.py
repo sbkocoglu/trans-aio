@@ -1,4 +1,4 @@
-import os, base64, variables
+import os, base64, variables, requests
 
 def decode_value(value):
     try:
@@ -48,3 +48,18 @@ def save_env(deepl_api, openai_api, default_translation, default_revision):
     except Exception as e:
         print(f"Failed to save .env: {e}")
         return
+
+def check_app_version():
+    url = f"https://api.github.com/repos/sbkocoglu/trans-aio/releases/latest"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        latest_version = tuple(map(int, data.get("tag_name", None).lstrip('v').split('.')))
+        app_version = tuple(map(int, data.get(variables.trans_version, None).lstrip('v').split('.')))
+        if app_version >= latest_version:
+            return True, None
+        else:
+            return False, data.get("tag_name", None)
+    else:
+        print(f"Failed to fetch release info: {response.status_code}")
+        return None, {response.status_code}

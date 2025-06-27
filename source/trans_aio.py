@@ -1,11 +1,13 @@
 import sys, os, variables, traceback
+
+from PyQt6.QtCore import Qt
 from datetime import datetime
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 from xliff import csv_columns, csv_termbase_to_df
 from translate import TranslatorUI
 from settings_ui import SettingsUI
-from system import load_env
+from system import load_env, check_app_version
 
 class MainUI(QMainWindow):
     def __init__(self):
@@ -14,7 +16,7 @@ class MainUI(QMainWindow):
         load_env()
 
     def initUI(self):
-        self.setWindowTitle(f"TransAIO v{variables.trans_version}")
+        self.setWindowTitle(f"TransAIO {variables.trans_version}")
         self.setMinimumSize(500,300)
         self.setWindowIcon(QIcon(variables.trans_icon))
 
@@ -27,6 +29,10 @@ class MainUI(QMainWindow):
         self.help_menu = top_menubar.addMenu("Help")
         self.about_action = QAction("About", self)
         self.about_action.triggered.connect(self.about_dialog)
+        self.check_version_action = QAction("Check for Updates", self)
+        self.check_version_action.triggered.connect(self.check_version)
+
+        self.help_menu.addAction(self.check_version_action)
         self.help_menu.addAction(self.about_action)
 
         central_widget = QWidget()
@@ -103,8 +109,35 @@ class MainUI(QMainWindow):
             self.translation_thread.show()
 
     def about_dialog(self):
-        about_message = f"TransAIO v{variables.trans_version} - All-in-one translation tool.\nDeveloped by Serkan B. Kocoglu.\nVisit the GitHub page for more: https://github.com/sbkocoglu/trans-aio."
-        QMessageBox.about(self, f"About TransAIO v{variables.trans_version}", about_message) 
+        about_message = f"""<b>TransAIO {variables.trans_version} - All-in-one translation tool.</b><br>
+        Developed by Serkan B. Kocoglu.<br>
+        Visit the GitHub page for more: <a href='https://github.com/sbkocoglu/trans-aio'>https://github.com/sbkocoglu/trans-aio</a>."""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(f"About TransAIO {variables.trans_version}")
+        msg_box.setTextFormat(Qt.TextFormat.RichText)
+        msg_box.setText(about_message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        msg_box.exec()
+
+    def check_version(self):
+        is_latest, latest_version = check_app_version()
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Check for Updates")
+        msg_box.setTextFormat(Qt.TextFormat.RichText)
+
+        if is_latest == True:
+            version_message = f"You are using the latest version: {latest_version}"
+        if is_latest == False:
+            version_message = f"A new version is available: {latest_version}.\nVisit the <a href='https://github.com/sbkocoglu/trans-aio'>GitHub</a> page to download it."
+        else:
+            version_message = "Failed to check for updates, please try again later or visit the <a href='https://github.com/sbkocoglu/trans-aio'>GitHub</a> page."
+
+        msg_box.setText(version_message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        msg_box.exec()
 
     def settings_ui(self):
         self.settings_ui = SettingsUI()
