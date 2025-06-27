@@ -12,6 +12,8 @@ def extract_mqxliff(mqxlz_path, extract_to="_temp/extracted_mqxliff"):
 
 class AnalyzerObject(QObject):
     update_progress_signal = pyqtSignal(int)
+    update_main_progress_signal = pyqtSignal(int)    
+    process_finished_signal = pyqtSignal()
 
 class AnalyzerThread(QThread):
     def __init__(self, qWidget):
@@ -19,13 +21,9 @@ class AnalyzerThread(QThread):
         self.qWidget = qWidget
         self.analyzer_object = AnalyzerObject()
         self.analyzer_object.update_progress_signal.connect(self.qWidget.update_progress_bar)
+        self.analyzer_object.update_main_progress_signal.connect(self.qWidget.update_main_progress_bar)
 
     def run(self):
-        """Anaylzes memoQ xliff file and converts it to a pandas dataframe.
-        file_path: Path to memoQ xliff
-        Returns a pandas dataframe.
-        Rows: Segment: int | Source: string | Target: string | Locked: string | Context: string  
-        """
         file_path = variables.trans_info["file_path"]
 
         parser = etree.XMLParser(strip_cdata=False)
@@ -52,7 +50,7 @@ class AnalyzerThread(QThread):
         variables.trans_info["current_step"] += 1
         self.qWidget.main_progress_label.setText(f"Analyzing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
         main_progress = variables.trans_info["current_step"] / variables.trans_info["total_steps"] * 100
-        self.qWidget.main_progress_bar.setValue(round(main_progress))
+        self.analyzer_object.update_main_progress_signal.emit(round(main_progress))
 
         for trans_unit in root.iter("{urn:oasis:names:tc:xliff:document:1.2}trans-unit"):
             trans_id = trans_unit.get("id")
@@ -84,67 +82,88 @@ class AnalyzerThread(QThread):
         variables.trans_info['mqxliff_df'] = analyzed_df
         self.analyzer_object.update_progress_signal.emit(100)
 
-def update_mqxliff(dataframe: pd.DataFrame, file_path: str, save_path: str):   
-    """Updates a memoQ xliff with a pandas dataframe values and saves it.
-    dataframe: Pandas dataframe with updated values/
-    file_path: memoQ xliff to be updated
-    save_path: Save destination for the updated memoQ xliff
-    """
+class UpdaterThread(QThread):
+    def __init__(self, qWidget):
+        super().__init__()
+        self.qWidget = qWidget
+        self.analyzer_object = AnalyzerObject()
+        self.analyzer_object.update_progress_signal.connect(self.qWidget.update_progress_bar)
+        self.analyzer_object.update_main_progress_signal.connect(self.qWidget.update_main_progress_bar)
+        self.analyzer_object.process_finished_signal.connect(self.qWidget.translation_finished)
 
-    parser = etree.XMLParser(strip_cdata=False)
-    tree = etree.parse(file_path, parser)  
-    root = tree.getroot()
+    def run(self):   
+        dataframe = variables.trans_info["mqxliff_df"]
+        file_path = variables.trans_info["file_path"]
+        save_path = variables.trans_info["save_path"]
+        parser = etree.XMLParser(strip_cdata=False)
+        tree = etree.parse(file_path, parser)  
+        root = tree.getroot()
+
+        df_length = sum(1 for _ in root.iter('{urn:oasis:names:tc:xliff:document:1.2}trans-unit'))       
+        completed_segments = 0
+        progress_update_treshold = 0
+
+        main_progress = variables.trans_info["current_step"] / variables.trans_info["total_steps"] * 100
+        self.analyzer_object.update_main_progress_signal.emit(round(main_progress))
+
+        namespaces = root.nsmap
+        memoq_regex = r"(<(?:mq|st|tw|bpt|ept|it|ph):[^>]+?\/?>|<\/(?:mq|st|tw|bpt|ept|it|ph):[^>]+?>|<(?:mq|st|tw|bpt|ept|it|ph):[^>]+?>|<.+?>|{})"
    
-    namespaces = root.nsmap
-    memoq_regex = r"(<(?:mq|st|tw|bpt|ept|it|ph):[^>]+?\/?>|<\/(?:mq|st|tw|bpt|ept|it|ph):[^>]+?>|<(?:mq|st|tw|bpt|ept|it|ph):[^>]+?>|<.+?>|{})"
-   
-    for trans_unit in root.iter("{urn:oasis:names:tc:xliff:document:1.2}trans-unit"):
-        trans_id = trans_unit.get("id")
+        for trans_unit in root.iter("{urn:oasis:names:tc:xliff:document:1.2}trans-unit"):
+            trans_id = trans_unit.get("id")
         
-        match_row = dataframe[dataframe["Segment"] == int(trans_id)]
-        if not match_row.empty:                
-            df_target_text = match_row["Translation"].iloc[0]  
-            df_target_text = str(df_target_text) if not pd.isna(df_target_text) else ""
+            match_row = dataframe[dataframe["Segment"] == int(trans_id)]
+            if not match_row.empty:                
+                df_target_text = match_row["Translation"].iloc[0]  
+                df_target_text = str(df_target_text) if not pd.isna(df_target_text) else ""
 
-            target_element = trans_unit.find("{urn:oasis:names:tc:xliff:document:1.2}target", namespaces)
-            source_element = trans_unit.find("{urn:oasis:names:tc:xliff:document:1.2}source")
+                target_element = trans_unit.find("{urn:oasis:names:tc:xliff:document:1.2}target", namespaces)
+                source_element = trans_unit.find("{urn:oasis:names:tc:xliff:document:1.2}source")
             
-            if target_element != None:
-                edited_target = df_target_text.lstrip() 
-                elements_dict = create_memoq_elements_dict(source_element)
-                parts = re.split(memoq_regex, edited_target)
-                for part in parts:
-                    if part: 
-                        cleaned_part = part.replace("\n", "")
-                        if re.match(r"(<(?:mq|st|tw|bpt|ept|it|ph):.+?\s*/>)|(<\/(?:mq|st|tw|bpt|ept|it|ph):.+?>)|(<(?:mq|st|tw|bpt|ept|it|ph):.+?>)|<.+?>|{}", cleaned_part, re.DOTALL):
-                            try:
-                                for key, value in elements_dict.items():
-                                    normalized_part = part.strip().replace("&", "&amp")
-                                    normalized_value_text = value["text"].strip().replace("&", "&amp")
-                                    if normalized_part == normalized_value_text:
-                                        element_type, element_id = key.split("_", 1)
-                                        element = etree.Element(element_type)
-                                        if value["attributes"]:
-                                            for attr_name, attr_value in value["attributes"].items():
-                                                element.set(attr_name, attr_value)
-                                        element.text = part.replace("&", "&amp")
-                                        target_element.append(element)
-                                if target_element.tail is None:
-                                    target_element.tail = "" 
+                if target_element != None:
+                    edited_target = df_target_text.lstrip() 
+                    elements_dict = create_memoq_elements_dict(source_element)
+                    parts = re.split(memoq_regex, edited_target)
+                    for part in parts:
+                        if part: 
+                            cleaned_part = part.replace("\n", "")
+                            if re.match(r"(<(?:mq|st|tw|bpt|ept|it|ph):.+?\s*/>)|(<\/(?:mq|st|tw|bpt|ept|it|ph):.+?>)|(<(?:mq|st|tw|bpt|ept|it|ph):.+?>)|<.+?>|{}", cleaned_part, re.DOTALL):
+                                try:
+                                    for key, value in elements_dict.items():
+                                        normalized_part = part.strip().replace("&", "&amp")
+                                        normalized_value_text = value["text"].strip().replace("&", "&amp")
+                                        if normalized_part == normalized_value_text:
+                                            element_type, element_id = key.split("_", 1)
+                                            element = etree.Element(element_type)
+                                            if value["attributes"]:
+                                                for attr_name, attr_value in value["attributes"].items():
+                                                    element.set(attr_name, attr_value)
+                                            element.text = part.replace("&", "&amp")
+                                            target_element.append(element)
+                                    if target_element.tail is None:
+                                        target_element.tail = "" 
 
-                            except etree.XMLSyntaxError as e:
-                                print(f"Error (XMLSyntaxError): {e} - matched_string: {part}")
-                        else:
-                            if len(target_element) > 0:
-                                last_element = target_element[-1]
-                                if last_element.tail is None:
-                                    last_element.tail = part  
-                                else:
-                                    last_element.tail += part 
+                                except etree.XMLSyntaxError as e:
+                                    print(f"Error (XMLSyntaxError): {e} - matched_string: {part}")
                             else:
-                                target_element.text = part                 
-    with open(save_path, "wb") as doc:
-        doc.write(etree.tostring(root))
+                                if len(target_element) > 0:
+                                    last_element = target_element[-1]
+                                    if last_element.tail is None:
+                                        last_element.tail = part  
+                                    else:
+                                        last_element.tail += part 
+                                else:
+                                    target_element.text = part         
+            completed_segments += 1
+            progress = (completed_segments / df_length) * 100 
+            if progress > progress_update_treshold + 5:
+                self.analyzer_object.update_progress_signal.emit(int(progress))
+                progress_update_treshold += 5
+
+        with open(save_path, "wb") as doc:
+            doc.write(etree.tostring(root))
+        self.analyzer_object.update_progress_signal.emit(int(100))
+        self.analyzer_object.process_finished_signal.emit()
 
 def csv_termbase_to_df(csv_path: str, source_language: str, target_language: str):
     """Converts a cvs termbase into a pandas dataframe.

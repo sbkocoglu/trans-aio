@@ -1,6 +1,6 @@
 import sys, os, variables, traceback
 from datetime import datetime
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 from xliff import csv_columns, csv_termbase_to_df
 from translate import TranslatorUI
@@ -14,8 +14,9 @@ class MainUI(QMainWindow):
         load_env()
 
     def initUI(self):
-        self.setWindowTitle("TransAIO")
+        self.setWindowTitle(f"TransAIO v{variables.trans_version}")
         self.setMinimumSize(500,300)
+        self.setWindowIcon(QIcon(variables.trans_icon))
 
         top_menubar = self.menuBar()
         self.settings_menu = top_menubar.addMenu("Settings")
@@ -102,8 +103,8 @@ class MainUI(QMainWindow):
             self.translation_thread.show()
 
     def about_dialog(self):
-        about_message = f"TransAIO - All-in-one translation tool.\nDeveloped by Serkan B. Kocoglu.\nVisit the GitHub page for more: https://github.com/sbkocoglu/trans-aio."
-        QMessageBox.about(self, f"About TransAIO", about_message) 
+        about_message = f"TransAIO v{variables.trans_version} - All-in-one translation tool.\nDeveloped by Serkan B. Kocoglu.\nVisit the GitHub page for more: https://github.com/sbkocoglu/trans-aio."
+        QMessageBox.about(self, f"About TransAIO v{variables.trans_version}", about_message) 
 
     def settings_ui(self):
         self.settings_ui = SettingsUI()

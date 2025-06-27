@@ -1,11 +1,12 @@
+from PyQt6.QtGui import QIcon
 import variables, pathlib, os
 import pandas as pd
 from segment import is_number, check_tm
 from machine_trans import deepl_translate
 from llm_trans import chatGPT_improve_tm, chatGPT_translate
-from xliff import AnalyzerThread, update_mqxliff
+from xliff import AnalyzerThread, UpdaterThread
 from PyQt6.QtCore import QMutex, QObject, QRunnable, QThread, pyqtSignal, pyqtSlot, QThreadPool
-from PyQt6.QtWidgets import QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget, QApplication
+from PyQt6.QtWidgets import QLabel, QMessageBox, QProgressBar, QPushButton, QVBoxLayout, QWidget, QApplication
 
 mutex = QMutex()
 
@@ -65,12 +66,16 @@ class TranslatorWorker(QRunnable):
 
 class TranslatorObject(QObject):
     update_progress_signal = pyqtSignal(int)
+    update_main_progress_signal = pyqtSignal(int)
+    translation_finished_signal = pyqtSignal()
 
 class TranslatorThread(QThread):
-    def __init__(self, qWidget, update_progress_bar):
+    def __init__(self, qWidget):
         super().__init__()
         self.translator_object = TranslatorObject()
-        self.translator_object.update_progress_signal.connect(update_progress_bar)
+        self.translator_object.update_progress_signal.connect(qWidget.update_progress_bar)
+        self.translator_object.update_main_progress_signal.connect(qWidget.update_main_progress_bar)
+        self.translator_object.translation_finished_signal.connect(qWidget.start_writing_mqxliff)
         self.qWidget = qWidget     
         self.threadpool = QThreadPool.globalInstance()
         self.threadpool.setMaxThreadCount(4)
@@ -98,7 +103,9 @@ class TranslatorThread(QThread):
         self.progress = 0
         variables.trans_info["current_step"] += 1
         self.qWidget.main_progress_label.setText(f"Translating - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
-        self.qWidget.main_progress_bar.setValue(int(variables.trans_info["current_step"] / variables.trans_info["total_steps"]))
+        main_progress = variables.trans_info["current_step"]/variables.trans_info["total_steps"]*100
+        print(main_progress)
+        self.translator_object.update_main_progress_signal.emit(int(main_progress))
 
         for index, row in self.trans_df.iterrows():
             worker = TranslatorWorker(self.trans_df, index, row, append_lists, self.trans_completed)
@@ -113,9 +120,8 @@ class TranslatorThread(QThread):
         if self.current_translation == self.translation_length:
             variables.trans_info['mqxliff_df'] = self.trans_df
             self.save_translation_log(self.segment_numbers, self.translation_logs, self.translation_results, self.translation_details, self.version_list)
-            update_mqxliff(variables.trans_info['mqxliff_df'], variables.trans_info['file_path'], variables.trans_info['save_path'])
-
-            self.translator_object.update_progress_signal.emit(100)   
+            self.translator_object.update_progress_signal.emit(100)  
+            self.translator_object.translation_finished_signal.emit()
 
     def save_translation_log(self, segment_numbers, translation_logs, translation_results, translation_details, version_list):
         translation_log = {'Segment' : segment_numbers,
@@ -134,11 +140,13 @@ class TranslatorThread(QThread):
         file_name = variables.trans_info['file_name']
         file_path = os.path.join(full_temp_dir, f"{file_name}-Machine_Translation.xlsx")
         translation_log_df.to_excel(file_path)
+        
   
 class TranslatorUI(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Translation Progress")
+        self.setWindowIcon(QIcon(variables.trans_icon))
         self.setMinimumSize(600,200)
 
         main_layout = QVBoxLayout()
@@ -168,15 +176,25 @@ class TranslatorUI(QWidget):
         QApplication.processEvents()  
         self.sub_progress_bar.setValue(progress)
 
+    def update_main_progress_bar(self, progress):
+        QApplication.processEvents()  
+        self.main_progress_bar.setValue(progress)
+
     def start_machine_translation(self):
         self.sub_progress_label.setText("Translating segments with machine translation...")
-        self.current_thread = TranslatorThread(self, self.update_progress_bar)
+        self.current_thread = TranslatorThread(self)
         self.current_thread.start()
-        self.current_thread.finished.connect(self.start_llm_translation)
 
+    def start_writing_mqxliff(self):
+        variables.trans_info["current_step"] += 1
+        self.main_progress_label.setText(f"Writing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
+        self.current_thread = UpdaterThread(self)
+        self.current_thread.start()
 
-    def start_llm_translation(self):
-        self.current_thread = None
+    def translation_finished(self):
+        QMessageBox.warning(self, "Translation Completed", f"""Segments translated: {variables.trans_info['segments_translated']}
+                                                                \nSegments skipped: {variables.trans_info['segments_skipped']}""")
+        self.close()
 
     def cancel_process(self):
         self.current_thread.terminate()

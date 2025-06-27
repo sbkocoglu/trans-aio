@@ -1,6 +1,8 @@
 import pandas as pd
+import os
 
-trans_version = 0.01
+trans_version = 0.1
+trans_icon = os.path.join(os.path.dirname(__file__), 'img', 'icon.png')
 
 trans_info = {
     "file_name" : None,
@@ -18,7 +20,7 @@ trans_info = {
     "tm_match_partial" : 0,
     "segments_skipped" : 0,
     "token_count" : 0,
-    "total_steps" : 4,
+    "total_steps" : 3,
     "current_step" : 0,
     }
 

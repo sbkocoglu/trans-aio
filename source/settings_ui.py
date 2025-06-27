@@ -1,3 +1,4 @@
+from PyQt6.QtGui import QIcon
 import variables
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QComboBox, QPushButton,
@@ -10,6 +11,7 @@ class SettingsUI(QWidget):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setMinimumSize(400, 300)
+        self.setWindowIcon(QIcon(variables.trans_icon))
         self.setup_ui()
 
     def setup_ui(self):
