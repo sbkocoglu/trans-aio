@@ -50,16 +50,18 @@ def save_env(deepl_api, openai_api, default_translation, default_revision):
         return
 
 def check_app_version():
-    url = f"https://api.github.com/repos/sbkocoglu/trans-aio/releases/latest"
+    url = "https://api.github.com/repos/sbkocoglu/trans-aio/releases/latest"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        latest_version = tuple(map(int, data.get("tag_name", None).lstrip('v').split('.')))
-        app_version = tuple(map(int, data.get(variables.trans_version, None).lstrip('v').split('.')))
+        tag = data.get("tag_name", None)
+        latest_version = tuple(map(int, tag.lstrip('v').split('.')))
+        app_version_str = getattr(variables, "trans_version", None)
+        app_version = tuple(map(int, app_version_str.lstrip('v').split('.')))
         if app_version >= latest_version:
-            return True, None
+            return True, tag
         else:
-            return False, data.get("tag_name", None)
+            return False, tag
     else:
         print(f"Failed to fetch release info: {response.status_code}")
-        return None, {response.status_code}
+        return None, response.status_code

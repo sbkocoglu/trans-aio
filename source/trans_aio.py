@@ -126,10 +126,9 @@ class MainUI(QMainWindow):
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Check for Updates")
         msg_box.setTextFormat(Qt.TextFormat.RichText)
-
         if is_latest == True:
             version_message = f"You are using the latest version: {latest_version}"
-        if is_latest == False:
+        elif is_latest == False:
             version_message = f"A new version is available: {latest_version}.\nVisit the <a href='https://github.com/sbkocoglu/trans-aio'>GitHub</a> page to download it."
         else:
             version_message = "Failed to check for updates, please try again later or visit the <a href='https://github.com/sbkocoglu/trans-aio'>GitHub</a> page."
