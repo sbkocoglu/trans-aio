@@ -64,3 +64,22 @@ def lang_code_fix(is_source, lang_code):
     if is_source and (lang_code.upper() == "EN-US" or lang_code.upper() == "EN-GB"):
         return "EN"
     return lang_code
+
+
+def check_deepl_languages(is_source=False, lang_code=""):
+    """Checks if the given language is supported by DeepL for translation or revision.
+    Returns True if supported, False otherwise.
+    """
+    lang_code = lang_code_fix(is_source, lang_code)
+    lang_code = lang_code.upper()
+
+    if is_source == True:
+        if lang_code in ["AR", "BG", "CS", "DA", "DE", "EL", "EN", "ES", "ET", "FI", "FR", "HU", "ID", "IT", "JA", "KO", "LT", "LV", "NB", "NL", "PL", "PT", "RO", "RU", "SK", "SL", "SV", "TR", "UK", "ZH"]:
+            return True
+        else:
+            return False
+    else:
+        if lang_code in ["AR", "BG", "CS", "DA", "DE", "EL", "EN-GB", "EN-US", "ES", "ET", "FI", "FR", "HU", "ID", "IT", "JA", "KO", "LT", "LV", "NB", "NL", "PL", "PT-BR", "PT-PT", "RO", "RU", "SK", "SL", "SV", "TR", "UK", "ZH", "ZH-HANS", "ZH-HANT"]:
+            return True
+        else:
+            return False

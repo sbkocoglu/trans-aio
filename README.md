@@ -44,7 +44,7 @@ pip install -r requirements.txt
 Run the application:
 
 ```bash
-python trans-aio.py
+python trans__aio.py
 ```
 
 ---
@@ -73,7 +73,7 @@ python trans-aio.py
 
 - Improve error handling 
 - Machine Translation support for other MT engines.
-- LLM Translation support for others LLMs (including local ones).
+- LLM Translation support for others LLMs (LangChain).
 - Further translation improvement (fuzzy matches where only the numbers are different, etc.)
 
 ---

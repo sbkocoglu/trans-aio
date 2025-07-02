@@ -29,7 +29,7 @@ deepl_api = ""
 default_translation = "MT"
 default_revision = "MT"
 openAI_api = ""
-openAI_model = "gpt-4.1"
+openAI_model = "gpt-4.1-mini"
 
 language_locale = {
     "ko_kr": "Korean",

@@ -23,9 +23,9 @@ def chatGPT_translate(row):
     api_key=variables.openAI_api,
     timeout=30,
     )
-    max_retries = 1
+    max_retries = 10
     retry_count = 0
-    retry_delay = 3
+    retry_delay = 20
     
     if not source_text:
         return ""
@@ -83,7 +83,7 @@ def chatGPT_translate(row):
                 retry_count += 1
                 time.sleep(retry_delay)
             else:
-                return corrected_gpt_translation, prompt, False, ""             
+                return corrected_gpt_translation, prompt         
        
         except Exception as e:
             error_message = f"An error occurred: {e}. Retrying after a delay."
@@ -96,10 +96,11 @@ def chatGPT_translate(row):
             
     if corrected_gpt_translation:
         error = f"::LLM_FAIL({retry_reason})::" 
-        return corrected_gpt_translation, prompt, True, error
+        corrected_gpt_translation =+ error
+        return corrected_gpt_translation, prompt
     else:
         error = f"::LLM_FAIL({retry_reason})::" 
-        return "", prompt, True, error 
+        return error, prompt
 
 def chatGPT_improve_tm(row, translation_memory):
     segment_from_row = row["Source"]
@@ -122,9 +123,9 @@ def chatGPT_improve_tm(row, translation_memory):
     api_key=variables.openAI_api,
     timeout=30,
     )
-    max_retries = 1
+    max_retries = 10
     retry_count = 0
-    retry_delay = 3
+    retry_delay = 20
     
     if not source_text:
         print("Source is empty, skipping...")
@@ -164,7 +165,7 @@ def chatGPT_improve_tm(row, translation_memory):
     while retry_count < max_retries:        
         try: 
             response = client.chat.completions.create(
-                model=variables.selected_model,
+                model=variables.openAI_model,
                 messages=[
                     {"role": "system", "content": "You are a localization & translation expert."},
                     {"role": "user", "content": prompt},
@@ -172,7 +173,7 @@ def chatGPT_improve_tm(row, translation_memory):
             )
             gpt_translation = response.choices[0].message.content
             corrected_gpt_translation = correction(gpt_translation, target_text)
-            variables.trans_info["job_token_count"] += response.usage.total_tokens
+            variables.trans_info["token_count"] += response.usage.total_tokens
             if (len(source_tags_dict) >= 1 and len(target_tags_dict) <= 0) or (len(source_tags_dict) <= 0 and len(target_tags_dict) >= 1):
                 missing_in_target, missing_in_source, mismatched_values = find_tag_discrepancies(source_tags_dict, target_tags_dict)
                 all_discrepancies = missing_in_target | missing_in_source | mismatched_values
@@ -187,7 +188,7 @@ def chatGPT_improve_tm(row, translation_memory):
                 retry_count += 1
                 time.sleep(retry_delay)
             else:
-                return corrected_gpt_translation, prompt, False, ""
+                return corrected_gpt_translation, prompt
        
         except Exception as e:
             error_message = f"An error occurred: {e}. Retrying after a delay."
@@ -200,10 +201,11 @@ def chatGPT_improve_tm(row, translation_memory):
             
     if corrected_gpt_translation:
         error = f"::LLM_FAIL({retry_reason})::" 
-        return corrected_gpt_translation, prompt, True, error
+        corrected_gpt_translation =+ error
+        return corrected_gpt_translation, prompt
     else:
         error = f"::LLM_FAIL({retry_reason})::" 
-        return "", prompt, True, error 
+        return error, prompt
  
 
 def correction(improved_translation, source_text):

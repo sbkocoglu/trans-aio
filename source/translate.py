@@ -2,10 +2,10 @@ from PyQt6.QtGui import QIcon
 import variables, pathlib, os
 import pandas as pd
 from segment import is_number, check_tm
-from machine_trans import deepl_translate
+from machine_trans import deepl_translate, check_deepl_languages
 from llm_trans import chatGPT_improve_tm, chatGPT_translate
 from xliff import AnalyzerThread, UpdaterThread
-from PyQt6.QtCore import QMutex, QObject, QRunnable, QThread, pyqtSignal, pyqtSlot, QThreadPool
+from PyQt6.QtCore import QMutex, QObject, QRunnable, QThread, Qt, pyqtSignal, pyqtSlot, QThreadPool
 from PyQt6.QtWidgets import QLabel, QMessageBox, QProgressBar, QPushButton, QVBoxLayout, QWidget, QApplication
 
 mutex = QMutex()
@@ -170,7 +170,20 @@ class TranslatorUI(QWidget):
         self.current_thread = AnalyzerThread(self)
         self.current_thread.start()
         self.sub_progress_label.setText("Converting Xliff into a dataframe...")
-        self.current_thread.finished.connect(self.start_machine_translation)
+        self.current_thread.finished.connect(self.check_for_errors)
+
+    def check_for_errors(self):
+        if variables.default_translation == "MT" or variables.default_revision == "MT":
+            target_language_okay = check_deepl_languages(False, variables.trans_info["target_language"])
+            source_language_okay = check_deepl_languages(True, variables.trans_info["source_language"])
+            if target_language_okay and target_language_okay:
+                self.start_machine_translation()
+            elif not source_language_okay:
+                self.translation_language_error(True)      
+            elif not target_language_okay:
+                self.translation_language_error(False)                
+        else:
+            self.start_machine_translation()
 
     def update_progress_bar(self, progress):
         QApplication.processEvents()  
@@ -190,10 +203,20 @@ class TranslatorUI(QWidget):
         self.main_progress_label.setText(f"Writing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
         self.current_thread = UpdaterThread(self)
         self.current_thread.start()
-
-    def translation_finished(self):
-        QMessageBox.warning(self, "Translation Completed", f"""Segments translated: {variables.trans_info['segments_translated']}
-                                                                \nSegments skipped: {variables.trans_info['segments_skipped']}""")
+    
+    def translation_language_error(self, is_source=False):
+        source_language = variables.trans_info['source_language'].upper()
+        target_language = variables.trans_info['target_language'].upper()
+        which_language = f"Source Language ({source_language})" if is_source == True else f"Target Language ({target_language})"
+        self.close()
+        error_message = f"Unsupported {which_language} for DeepL engine. Check <a href='https://support.deepl.com/hc/en-us/articles/360019925219-DeepL-Translator-languages'>DeepL website</a> for supported languages."
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(f"Language Support Error")
+        msg_box.setTextFormat(Qt.TextFormat.RichText)
+        msg_box.setText(error_message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        msg_box.exec()
         self.close()
 
     def cancel_process(self):
