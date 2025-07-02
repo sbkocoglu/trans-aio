@@ -20,9 +20,9 @@
 
 ## 🚀 Getting Started
 
-### Windows Installation
+### Windows 
 
-For Windows users, a pre-built executable is available for easy installation. Download the latest release from the [Releases](https://github.com/sbkocoglu/trans-aio/releases/latest) page and run the program directly without needing to install Python or dependencies.
+For Windows users, a pre-built executable is available. Download the latest release from the [Releases](https://github.com/sbkocoglu/trans-aio/releases/latest) page and run the program directly without needing to install Python or dependencies.
 
 ### Prerequisites
 
@@ -66,6 +66,8 @@ python trans_aio.py
 ---
 
 ## 🐛 Known Issues
+
+- **OpenAI API**: The translation is slow due to API limitations. Your API limitation is based on your [OpenAI tier](https://platform.openai.com/settings/organization/limits).
 - Unsupported languages/language pairs (check DeepL's website for supported languages for translation)
 - Some rare tag formats may not be restored perfectly.
 - If the system has limited threads, heavy jobs may cause UI freezing.
