@@ -20,6 +20,10 @@
 
 ## 🚀 Getting Started
 
+### Windows Installation
+
+For Windows users, a pre-built executable is available for easy installation. Download the latest release from the [Releases](https://github.com/sbkocoglu/trans-aio/releases/latest) page and run the program directly without needing to install Python or dependencies.
+
 ### Prerequisites
 
 - Python 3.13 or later
@@ -44,7 +48,7 @@ pip install -r requirements.txt
 Run the application:
 
 ```bash
-python trans__aio.py
+python trans_aio.py
 ```
 
 ---
