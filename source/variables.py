@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-trans_version = "v0.9.1"
+trans_version = "v1.0.0"
 trans_icon = "img/icon.png"
 
 trans_info = {
