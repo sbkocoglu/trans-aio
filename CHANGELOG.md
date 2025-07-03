@@ -6,6 +6,7 @@
 - Added a check for segments that are only a link. These segments will be copied over without translation
 - How many segments couldn't be translated is now displayed at the end of the translation process
 - Added error handling for not being able to fecth Ollama model list if Ollama is not installed or not running
+- Added error handling for missing API keys in settings if relevant LLM/MT is selected
 
 ### Fixes
 

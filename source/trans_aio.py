@@ -1,5 +1,4 @@
 import sys, os, variables, traceback
-
 from PyQt6.QtCore import Qt
 from datetime import datetime
 from PyQt6.QtGui import QAction, QIcon
@@ -101,6 +100,12 @@ class MainUI(QMainWindow):
     def start_translation(self):
         if variables.trans_info["file_path"] == None:
             QMessageBox.warning(self, "Error", f"Select a MQXLIFF file first.")
+            return
+        elif variables.openAI_api == "" and variables.selected_llm == "OpenAI" and (variables.default_revision == "LLM" or variables.default_translation == "LLM"):
+            QMessageBox.warning(self, "Error", f"OpenAI API key is not set. Please set it in the settings.")
+            return
+        elif variables.deepl_api == "" and (variables.default_revision == "MT" or variables.default_translation == "MT"):
+            QMessageBox.warning(self, "Error", f"DeepL API key is not set. Please set it in the settings.")
             return
         save_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MQXLIFF file (*.mqxliff)")
         if save_path:
