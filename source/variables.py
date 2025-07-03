@@ -26,10 +26,14 @@ trans_info = {
 
 trans_save = None
 deepl_api = ""
+translation_threads = 4
 default_translation = "MT"
 default_revision = "MT"
 openAI_api = ""
 openAI_model = "gpt-4.1-mini"
+selected_llm = "OpenAI"
+ollama_host = "http://localhost:11434"
+ollama_model = ""
 
 language_locale = {
     "ko_kr": "Korean",

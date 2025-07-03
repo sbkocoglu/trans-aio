@@ -78,7 +78,7 @@ class TranslatorThread(QThread):
         self.translator_object.translation_finished_signal.connect(qWidget.start_writing_mqxliff)
         self.qWidget = qWidget     
         self.threadpool = QThreadPool.globalInstance()
-        self.threadpool.setMaxThreadCount(4)
+        self.threadpool.setMaxThreadCount(variables.translation_threads)
 
     def run(self):
         self.segment_numbers = []
@@ -99,12 +99,11 @@ class TranslatorThread(QThread):
         self.segments = self.trans_df['Source']
 
         self.translation_length = len(self.segments)
-        self.current_translation = 0
+        self.current_translation = 1
         self.progress = 0
         variables.trans_info["current_step"] += 1
         self.qWidget.main_progress_label.setText(f"Translating - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
         main_progress = variables.trans_info["current_step"]/variables.trans_info["total_steps"]*100
-        print(main_progress)
         self.translator_object.update_main_progress_signal.emit(int(main_progress))
 
         for index, row in self.trans_df.iterrows():
@@ -194,7 +193,7 @@ class TranslatorUI(QWidget):
         self.main_progress_bar.setValue(progress)
 
     def start_machine_translation(self):
-        self.sub_progress_label.setText("Translating segments with machine translation...")
+        self.sub_progress_label.setText("Translating segments...")
         self.current_thread = TranslatorThread(self)
         self.current_thread.start()
 
@@ -203,12 +202,22 @@ class TranslatorUI(QWidget):
         self.main_progress_label.setText(f"Writing MQXLIFF - {variables.trans_info["current_step"]}/{variables.trans_info["total_steps"]}")
         self.current_thread = UpdaterThread(self)
         self.current_thread.start()
+
+    def translation_finished(self):
+        error_message = f"Segments translated: {variables.trans_info["segments_translated"]}\nSegments skipped: {variables.trans_info["segments_skipped"]}\n"
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(f"Translation Finished")
+        msg_box.setTextFormat(Qt.TextFormat.RichText)
+        msg_box.setText(error_message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        msg_box.exec()
+        self.close()
     
     def translation_language_error(self, is_source=False):
         source_language = variables.trans_info['source_language'].upper()
         target_language = variables.trans_info['target_language'].upper()
         which_language = f"Source Language ({source_language})" if is_source == True else f"Target Language ({target_language})"
-        self.close()
         error_message = f"Unsupported {which_language} for DeepL engine. Check <a href='https://support.deepl.com/hc/en-us/articles/360019925219-DeepL-Translator-languages'>DeepL website</a> for supported languages."
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle(f"Language Support Error")
@@ -219,9 +228,18 @@ class TranslatorUI(QWidget):
         msg_box.exec()
         self.close()
 
+
     def cancel_process(self):
-        self.current_thread.terminate()
-        self.current_thread.exit()
-        self.current_thread.quit()
-        self.current_thread.wait()
-        self.close()
+            if hasattr(self, "current_thread") and self.current_thread is not None:
+                if isinstance(self.current_thread, QThread):
+                    self.current_thread.requestInterruption()
+                    self.current_thread.quit()
+                    self.current_thread.wait()
+                elif hasattr(self.current_thread, "terminate"):
+                    self.current_thread.terminate()
+                    self.current_thread.wait()
+            try:
+                QThreadPool.globalInstance().clear()
+            except AttributeError:
+                pass
+            self.close()

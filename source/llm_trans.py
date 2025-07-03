@@ -1,7 +1,26 @@
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 import time, variables
 from segment import (restore_tags, find_tag_discrepancies, remove_discrepant_tags, create_tag_dict, 
                          is_numbered_list, is_bracketed_number, check_for_tags, check_termbase)
+
+def select_llm():
+    if variables.selected_llm == "OpenAI":
+        llm = ChatOpenAI(
+            model=variables.openAI_model,
+            temperature=0.5,
+            max_retries=10,
+            timeout=30,
+            api_key=variables.openAI_api,
+        )
+    elif variables.selected_llm == "Ollama":
+        llm = ChatOllama(
+        model = variables.ollama_model,
+        temperature = 0.5,
+        num_predict = -1,
+        base_url = variables.ollama_host,
+        )
+    return llm
 
 def chatGPT_translate(row):   
     segment_from_row = row["Source"]
@@ -19,14 +38,6 @@ def chatGPT_translate(row):
     else:
         target_language_name = variables.trans_info["target_language"]
         
-    client = OpenAI(
-    api_key=variables.openAI_api,
-    timeout=30,
-    )
-    max_retries = 10
-    retry_count = 0
-    retry_delay = 20
-    
     if not source_text:
         return ""
     
@@ -43,64 +54,68 @@ def chatGPT_translate(row):
     if variables.trans_info["tb_df"] is not None:
         relevant_glossary = check_termbase(source_text)     
             
-                    
     if len(relevant_glossary) > 0:
         prompt += "Strictly use this termbase:\n"
         for index, info in relevant_glossary.items():
             source = info["Source"]
             target = info["Target"]
             prompt += f"- {source} = {target}.\n"    
-           
         
     prompt += "\nRespond after 'Translation:' with nothing but your translation."
+    if segment_context.strip() != "N/A" and segment_context.strip() != "":
+        prompt += f"\nAdditional info about the segment to help you translate: \n{segment_context}"
     prompt += "\nText:"
     prompt += f"\n{source_text}"
-    if segment_context != "N/A":
-        prompt += f"\nAdditional info about text: \n{segment_context}"
     prompt += "\nTranslation:"  
     
+    messages = [
+        (
+            "system",
+            "You are a localization & translation expert.",
+        ),
+        ("human", prompt),
+    ]
+
+    max_retries = 10
+    retry_delay = 20 if variables.selected_llm == "OpenAI" else 3
+    retry_count = 0
+
+    llm = select_llm()
     
-    while retry_count < max_retries:        
-        try: 
-            response = client.chat.completions.create(
-                model=variables.openAI_model,
-                messages=[
-                    {"role": "system", "content": "You are a localization & translation expert."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            gpt_translation = response.choices[0].message.content
-            corrected_gpt_translation = correction(gpt_translation, source_text)
-            variables.trans_info["token_count"] += response.usage.total_tokens
-            
+    while retry_count < max_retries:
+        try:
+            response = llm.invoke(messages)
+            llm_translation = response.content
+            corrected_llm_translation = correction(llm_translation, source_text)
             if len(source_tags_dict) >= 1:
-                if check_for_tags(corrected_gpt_translation, source_tags_dict):
-                    corrected_gpt_translation = restore_tags(corrected_gpt_translation, source_tags_dict)
-                    
-            retry_reason = should_retry(source_text, corrected_gpt_translation)
+                if check_for_tags(corrected_llm_translation, source_tags_dict):
+                    corrected_llm_translation = restore_tags(corrected_llm_translation, source_tags_dict)
+            retry_reason = should_retry(source_text, corrected_llm_translation)
+            if hasattr(response, "response_metadata") and response.response_metadata:
+                total_tokens = response.response_metadata.get("token_usage", {}).get("total_tokens", None)
+            elif hasattr(response, "usage_metadata") and response.usage_metadata:
+                total_tokens = response.usage_metadata.get("total_tokens", None)
+            else:
+                total_tokens = 0
+            if total_tokens is not None:
+                variables.trans_info["token_count"] =+ total_tokens
 
             if retry_reason:
                 retry_count += 1
                 time.sleep(retry_delay)
+                continue
             else:
-                return corrected_gpt_translation, prompt         
-       
+                return corrected_llm_translation, prompt
+
         except Exception as e:
             error_message = f"An error occurred: {e}. Retrying after a delay."
-            print(client.api_key)
             print(error_message)
-            print(e)  
             retry_count += 1
             retry_reason = f"Reason: {e}"
             time.sleep(retry_delay)
-            
-    if corrected_gpt_translation:
-        error = f"::LLM_FAIL({retry_reason})::" 
-        corrected_gpt_translation =+ error
-        return corrected_gpt_translation, prompt
-    else:
-        error = f"::LLM_FAIL({retry_reason})::" 
-        return error, prompt
+
+    error = f"::LLM_FAIL({retry_reason})::"
+    return error, prompt
 
 def chatGPT_improve_tm(row, translation_memory):
     segment_from_row = row["Source"]
@@ -119,13 +134,6 @@ def chatGPT_improve_tm(row, translation_memory):
     else:
         target_language_name = variables.trans_info["target_language"]
         
-    client = OpenAI(
-    api_key=variables.openAI_api,
-    timeout=30,
-    )
-    max_retries = 10
-    retry_count = 0
-    retry_delay = 20
     
     if not source_text:
         print("Source is empty, skipping...")
@@ -154,58 +162,62 @@ def chatGPT_improve_tm(row, translation_memory):
             prompt += f"- {source} = {target}.\n"  
                         
     prompt += "\nRespond after 'Revised Translation:' with nothing but your revised translation."
+    if segment_context.strip() != "N/A" and segment_context.strip() != "":
+        prompt += f"\nAdditional info about the segment to help you translate: \n{segment_context}"
     prompt += "\nText:"
     prompt += f"\n{source_text}"
     prompt += f"\nTranslation (from translation memory):"
     prompt += f"\n{target_text}"
-    if segment_context != "N/A":
-        prompt += f"\nAdditional info about text: \n{segment_context}"
     prompt += f"\nRevised Translation:"
     
-    while retry_count < max_retries:        
-        try: 
-            response = client.chat.completions.create(
-                model=variables.openAI_model,
-                messages=[
-                    {"role": "system", "content": "You are a localization & translation expert."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            gpt_translation = response.choices[0].message.content
-            corrected_gpt_translation = correction(gpt_translation, target_text)
-            variables.trans_info["token_count"] += response.usage.total_tokens
-            if (len(source_tags_dict) >= 1 and len(target_tags_dict) <= 0) or (len(source_tags_dict) <= 0 and len(target_tags_dict) >= 1):
-                missing_in_target, missing_in_source, mismatched_values = find_tag_discrepancies(source_tags_dict, target_tags_dict)
-                all_discrepancies = missing_in_target | missing_in_source | mismatched_values
-                corrected_gpt_translation = remove_discrepant_tags(corrected_gpt_translation, all_discrepancies)
-            if len(source_tags_dict) >= 1 and len(target_tags_dict) >= 1:
-                if check_for_tags(corrected_gpt_translation, target_tags_dict):
-                    corrected_gpt_translation = restore_tags(corrected_gpt_translation, source_tags_dict)
-                    
-            retry_reason = should_retry(target_text, corrected_gpt_translation)
+    messages = [
+        (
+            "system",
+            "You are a localization & translation expert.",
+        ),
+        ("human", prompt),
+    ]
+
+    max_retries = 10
+    retry_delay = 20 if variables.selected_llm == "OpenAI" else 3
+    retry_count = 0
+
+    llm = select_llm()
+    
+    while retry_count < max_retries:
+        try:
+            response = llm.invoke(messages)
+            llm_translation = response.content
+            corrected_llm_translation = correction(llm_translation, source_text)
+            if len(source_tags_dict) >= 1:
+                if check_for_tags(corrected_llm_translation, source_tags_dict):
+                    corrected_llm_translation = restore_tags(corrected_llm_translation, source_tags_dict)
+            retry_reason = should_retry(source_text, corrected_llm_translation)
+            if hasattr(response, "response_metadata") and response.response_metadata:
+                total_tokens = response.response_metadata.get("token_usage", {}).get("total_tokens", None)
+            elif hasattr(response, "usage_metadata") and response.usage_metadata:
+                total_tokens = response.usage_metadata.get("total_tokens", None)
+            else:
+                total_tokens = 0
+            if total_tokens is not None:
+                variables.trans_info["token_count"] =+ total_tokens
 
             if retry_reason:
                 retry_count += 1
                 time.sleep(retry_delay)
+                continue
             else:
-                return corrected_gpt_translation, prompt
-       
+                return corrected_llm_translation, prompt
+
         except Exception as e:
             error_message = f"An error occurred: {e}. Retrying after a delay."
-            print(client.api_key)
             print(error_message)
-            print(e)  
             retry_count += 1
             retry_reason = f"Reason: {e}"
             time.sleep(retry_delay)
-            
-    if corrected_gpt_translation:
-        error = f"::LLM_FAIL({retry_reason})::" 
-        corrected_gpt_translation =+ error
-        return corrected_gpt_translation, prompt
-    else:
-        error = f"::LLM_FAIL({retry_reason})::" 
-        return error, prompt
+
+    error = f"::LLM_FAIL({retry_reason})::"
+    return error, prompt
  
 
 def correction(improved_translation, source_text):
@@ -231,7 +243,7 @@ def correction(improved_translation, source_text):
         improved_translation = improved_translation.lstrip("\n")
     if improved_translation.endswith("\s"):
         improved_translation = improved_translation[:-1]        
-    corrected_translation = improved_translation
+    corrected_translation = improved_translation.strip()
     
     return corrected_translation
 

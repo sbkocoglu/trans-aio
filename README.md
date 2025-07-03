@@ -24,13 +24,11 @@
 
 For Windows users, a pre-built executable is available. Download the latest release from the [Releases](https://github.com/sbkocoglu/trans-aio/releases/latest) page and run the program directly without needing to install Python or dependencies.
 
-### Prerequisites
-
-- Python 3.13 or later
-- DeepL API and/or OpenAI API
-- memoQ
+### Installing from Source
 
 ### Installation
+
+- Python 3.13 or later
 
 Clone the repository:
 
@@ -55,20 +53,19 @@ python trans_aio.py
 
 ## 🧪 How to use
 1. Open Settings menu from top-menu.
-2. Enter your DeepL and/or OpenAI API keys.
+2. Enter your API keys and/or Ollama host URL and select the Ollama model you have installed.
 3. Select how you want to translate and improve translations from Translation memory.
 4. Select an MQXLIFF file.
-5. **Optional** Select a Translation Memory and/or Termbase.
+5. (**Optional**) Select a Translation Memory and/or Termbase.
 6. Click **Start** and select a destination to save the MQXLIFF file.
 7. Wait for translation to end.
-8. **Optional** Check **_temp** folder for details.
+8. (**Optional**) Check **_temp** folder for details.
 
 ---
 
 ## 🐛 Known Issues
 
 - **OpenAI API**: The translation is slow due to API limitations. Your API limitation is based on your [OpenAI tier](https://platform.openai.com/settings/organization/limits).
-- Unsupported languages/language pairs (check DeepL's website for supported languages for translation)
 - Some rare tag formats may not be restored perfectly.
 - If the system has limited threads, heavy jobs may cause UI freezing.
 - Only **.mqxliff** and **.mqxlz** files are currently supported.
@@ -79,7 +76,7 @@ python trans_aio.py
 
 - Improve error handling 
 - Machine Translation support for other MT engines.
-- LLM Translation support for others LLMs (LangChain).
+- Additional support for other LLMs
 - Further translation improvement (fuzzy matches where only the numbers are different, etc.)
 
 ---
