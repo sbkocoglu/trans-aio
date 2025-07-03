@@ -35,7 +35,7 @@ def load_env():
                     revision_method = value.strip()
                 elif key == "TRANSLATION_THREADS":
                     translation_threads = int(value.strip())
-                elif key == "LLM_PROVIDER":
+                elif key == "SELECTED_LLM":
                     selected_llm = value.strip()
                 elif key == "OLLAMA_HOST":
                     ollama_host = value.strip()
@@ -54,7 +54,7 @@ def load_env():
     variables.ollama_host = ollama_host
     variables.ollama_model = ollama_model
 
-def save_env(deepl_api, openai_api, default_translation, default_revision, translation_threads, llm_provider, ollama_host, ollama_model):
+def save_env(deepl_api, openai_api, default_translation, default_revision, translation_threads, selected_llm, ollama_host, ollama_model):
     try:
         with open(".env", "w", encoding="utf-8") as f:
             f.write(f'DEEPL_API={base64.b64encode(deepl_api.encode()).decode()}\n')
@@ -62,7 +62,7 @@ def save_env(deepl_api, openai_api, default_translation, default_revision, trans
             f.write(f'TRANSLATION_METHOD={default_translation}\n')
             f.write(f'REVISION_METHOD={default_revision}\n')
             f.write(f'TRANSLATION_THREADS={translation_threads}\n')
-            f.write(f'LLM_PROVIDER={llm_provider}\n')
+            f.write(f'SELECTED_LLM={selected_llm}\n')
             f.write(f'OLLAMA_HOST={ollama_host}\n')
             f.write(f'OLLAMA_MODEL={ollama_model}\n')
     except Exception as e:

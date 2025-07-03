@@ -147,7 +147,7 @@ class SettingsUI(QWidget):
         variables.ollama_host = ollama_host
         variables.ollama_model = ollama_model
         variables.deepl_api = self.deepl_key_input.text()
-        variables.llm_provider = provider
+        variables.selected_llm = provider
         variables.openAI_api = openai_api
 
         save_env(
@@ -156,7 +156,7 @@ class SettingsUI(QWidget):
             default_translation,
             default_revision,
             translation_threads,
-            getattr(variables, "llm_provider", "OpenAI"),
+            getattr(variables, "selected_llm", "OpenAI"),
             getattr(variables, "ollama_host", ""),
             getattr(variables, "ollama_model", "")
         )
