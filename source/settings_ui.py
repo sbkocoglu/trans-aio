@@ -20,14 +20,12 @@ class SettingsUI(QWidget):
         api_group = QGroupBox("API Keys / Providers")
         api_layout = QFormLayout()
 
-        # Provider selection
         self.provider_combo = QComboBox()
         self.provider_combo.addItems(["OpenAI", "Ollama"])
         self.provider_combo.setCurrentText(getattr(variables, "llm_provider", "OpenAI"))
         self.provider_combo.currentTextChanged.connect(self.update_provider_ui)
         api_layout.addRow(QLabel("LLM Provider:"), self.provider_combo)
 
-        # OpenAI options
         self.openai_widget = QWidget()
         openai_layout = QFormLayout(self.openai_widget)
         self.openai_key_input = QLineEdit()
@@ -45,7 +43,6 @@ class SettingsUI(QWidget):
         deepl_layout.addRow(QLabel("DeepL API Key:"), self.deepl_key_input)
         deepl_group.setLayout(deepl_layout)
 
-        # Ollama options
         self.ollama_widget = QWidget()
         ollama_layout = QFormLayout(self.ollama_widget)
         self.ollama_host_input = QLineEdit()
@@ -54,7 +51,7 @@ class SettingsUI(QWidget):
         self.ollama_model_combo = QComboBox()
         self.ollama_model_combo.setEditable(False)
         self.ollama_get_models_button = QPushButton("Get Models")
-        self.ollama_get_models_button.clicked.connect(lambda: self.ollama_model_combo.addItems(self.get_ollama_models()))
+        self.ollama_get_models_button.clicked.connect(self.get_ollama_models)
         if hasattr(variables, "ollama_model"):
             self.ollama_model_combo.setCurrentText(variables.ollama_model)
         ollama_layout.addRow(QLabel("Ollama Host URL:"), self.ollama_host_input)
@@ -81,7 +78,6 @@ class SettingsUI(QWidget):
         method_layout.addRow(QLabel("Translation Method:"), self.translation_method_combo)
         method_layout.addRow(QLabel("Revision Method:"), self.revision_method_combo)
 
-        # Slider for translation_threads
         self.threads_slider = QSlider(Qt.Orientation.Horizontal)
         self.threads_slider.setMinimum(2)
         self.threads_slider.setMaximum(6)
@@ -128,10 +124,13 @@ class SettingsUI(QWidget):
             resp = requests.get(f"{host}/api/tags", timeout=2)
             if resp.status_code == 200:
                 data = resp.json()
-                return [m["name"] for m in data.get("models", [])]
+                self.ollama_model_combo.clear()  
+                self.ollama_model_combo.addItems([m["name"] for m in data.get("models", [])])
+                return
         except Exception:
             pass
-        return ["llama3.2"]
+        QMessageBox.warning(self, "Error", f"Failed to fetch models. Please check the host URL and make sure Ollama is running.")
+
 
     def save_settings(self):
         provider = self.provider_combo.currentText()

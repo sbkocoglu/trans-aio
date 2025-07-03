@@ -1,4 +1,18 @@
-## v1.0.0 (07.03.2025)
+## v1.0.1 (04.07.2025)
+
+### Updates
+
+- Changed LLM response format to json. This reduces the chance of LLMs adding their own comments and explanations to the translation
+- Added a check for segments that are only a link. These segments will be copied over without translation
+- How many segments couldn't be translated is now displayed at the end of the translation process
+- Added error handling for not being able to fecth Ollama model list if Ollama is not installed or not running
+
+### Fixes
+
+- Reduced num_predict value for Ollama to 128 (default value) from -1 (infinite)
+- Code cleanup
+
+## v1.0.0 (03.07.2025)
 
 ### Updates
 

@@ -1,7 +1,7 @@
 from PyQt6.QtGui import QIcon
 import variables, pathlib, os
 import pandas as pd
-from segment import is_number, check_tm
+from segment import is_number, check_tm, is_link
 from machine_trans import deepl_translate, check_deepl_languages
 from llm_trans import chatGPT_improve_tm, chatGPT_translate
 from xliff import AnalyzerThread, UpdaterThread
@@ -26,16 +26,17 @@ class TranslatorWorker(QRunnable):
         trans_type = "MT" if variables.default_translation == "MT" else "LLM"
         trans_tm_type = "MT" if variables.default_revision == "MT" else "LLM"
 
-        if is_number(self.row['Source']):
+        if is_number(self.row['Source']) or is_link(self.row['Source']):
             self.trans_df.at[self.index, 'Translation'] = self.row['Source']
             translated_segment = self.row['Source']
-            self.append_lists(self.row['Segment'], 'N/A', self.row['Source'], 'Translation skipped, numbers only segment.') 
+            self.append_lists(self.row['Segment'], 'N/A', self.row['Source'], 'Translation skipped, no need to translate.') 
+            variables.trans_info['segments_skipped'] += 1
         else:   
             tm_match = check_tm(self.row['Source'], variables.trans_info['tm_df'])
             if not tm_match.empty:
                 if float(tm_match['Similarity']) == 100:
                     self.trans_df.at[self.index, 'Translation'] = tm_match['Target']
-                    self.append_lists(self.row['Segment'], 'N/A', tm_match['Target'], 'Translation skipped, TM match found.')
+                    self.append_lists(self.row['Segment'], f'Source Text:\n{self.row["Source"]}', tm_match['Target'], 'Translation skipped, TM match found.')
                     variables.trans_info['tm_match'] += 1                            
                 elif float(tm_match['Similarity']) < 100 and float(tm_match['Similarity']) > 79:
                     translated_segment, translation_log = trans_tm_function(self.row, tm_match['Target'])
@@ -204,7 +205,9 @@ class TranslatorUI(QWidget):
         self.current_thread.start()
 
     def translation_finished(self):
-        error_message = f"Segments translated: {variables.trans_info["segments_translated"]}\nSegments skipped: {variables.trans_info["segments_skipped"]}\n"
+        error_message = f"""Segments translated: {variables.trans_info["segments_translated"]}
+                            \nSegments skipped: {variables.trans_info["segments_skipped"]}
+                            \nFailed translations: {variables.trans_info["translation_failed"]}"""
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle(f"Translation Finished")
         msg_box.setTextFormat(Qt.TextFormat.RichText)

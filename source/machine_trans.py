@@ -25,7 +25,7 @@ def deepl_translate(row, translation_memory=None, max_retries=5):
 
     translator = deepl.Translator(variables.deepl_api)
 
-    retry_delay = 1  # Start with 1 second
+    retry_delay = 1  
     for attempt in range(max_retries):
         try:
             result = translator.translate_text(

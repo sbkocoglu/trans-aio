@@ -1,8 +1,17 @@
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
+from pydantic import BaseModel, Field
+from typing import Optional
 import time, variables
 from segment import (restore_tags, find_tag_discrepancies, remove_discrepant_tags, create_tag_dict, 
                          is_numbered_list, is_bracketed_number, check_for_tags, check_termbase)
+
+class TranslationRequest(BaseModel):
+    translation: str
+    comments: Optional[str] = Field(
+        default=..., description="Comments about translation (optional)"
+    )
+
 
 def select_llm():
     if variables.selected_llm == "OpenAI":
@@ -12,15 +21,20 @@ def select_llm():
             max_retries=10,
             timeout=30,
             api_key=variables.openAI_api,
+            format="json",
         )
     elif variables.selected_llm == "Ollama":
         llm = ChatOllama(
         model = variables.ollama_model,
         temperature = 0.5,
-        num_predict = -1,
+        num_predict = 128,
         base_url = variables.ollama_host,
+        format = "json",
         )
-    return llm
+
+    structured_llm = llm.with_structured_output(TranslationRequest)
+    return structured_llm
+
 
 def chatGPT_translate(row):   
     segment_from_row = row["Source"]
@@ -41,7 +55,7 @@ def chatGPT_translate(row):
     if not source_text:
         return ""
     
-    prompt = f"Translate the following text from {source_language_name} to {target_language_name}. You MUST provide a translation."
+    prompt = f"Translate the following text from {source_language_name} to {target_language_name}. Respond using JSON only."
     
     if is_numbered_list(source_text):
         prompt += "\nSource text starts with a numbered list, your translation must start with the same numbered list."
@@ -61,12 +75,12 @@ def chatGPT_translate(row):
             target = info["Target"]
             prompt += f"- {source} = {target}.\n"    
         
-    prompt += "\nRespond after 'Translation:' with nothing but your translation."
+    #prompt += "\nRespond after 'Translation:' with nothing but your translation."
     if segment_context.strip() != "N/A" and segment_context.strip() != "":
         prompt += f"\nAdditional info about the segment to help you translate: \n{segment_context}"
     prompt += "\nText:"
     prompt += f"\n{source_text}"
-    prompt += "\nTranslation:"  
+    #prompt += "\nTranslation:"  
     
     messages = [
         (
@@ -85,7 +99,7 @@ def chatGPT_translate(row):
     while retry_count < max_retries:
         try:
             response = llm.invoke(messages)
-            llm_translation = response.content
+            llm_translation = response.translation
             corrected_llm_translation = correction(llm_translation, source_text)
             if len(source_tags_dict) >= 1:
                 if check_for_tags(corrected_llm_translation, source_tags_dict):
@@ -115,6 +129,7 @@ def chatGPT_translate(row):
             time.sleep(retry_delay)
 
     error = f"::LLM_FAIL({retry_reason})::"
+    variables.trans_info["translation_failed"] += 1
     return error, prompt
 
 def chatGPT_improve_tm(row, translation_memory):
@@ -139,7 +154,7 @@ def chatGPT_improve_tm(row, translation_memory):
         print("Source is empty, skipping...")
         return ""
     
-    prompt = f"Revise the translation of the text below from {source_language_name} to {target_language_name}. You MUST provide a revised translation."
+    prompt = f"Revise the translation of the text below from {source_language_name} to {target_language_name}. Respond using JSON only."
     prompt += f"\nThe translation provided is from the translation memory. Do not change the sentence structure or word order if possible."
     prompt += f"\nOnly revise the incorrect parts, make sure the translation is similar to translation memory."
     
@@ -161,14 +176,14 @@ def chatGPT_improve_tm(row, translation_memory):
             target = info["Target"]
             prompt += f"- {source} = {target}.\n"  
                         
-    prompt += "\nRespond after 'Revised Translation:' with nothing but your revised translation."
+    #prompt += "\nRespond after 'Revised Translation:' with nothing but your revised translation."
     if segment_context.strip() != "N/A" and segment_context.strip() != "":
         prompt += f"\nAdditional info about the segment to help you translate: \n{segment_context}"
     prompt += "\nText:"
     prompt += f"\n{source_text}"
     prompt += f"\nTranslation (from translation memory):"
     prompt += f"\n{target_text}"
-    prompt += f"\nRevised Translation:"
+    #prompt += f"\nRevised Translation:"
     
     messages = [
         (
@@ -187,7 +202,7 @@ def chatGPT_improve_tm(row, translation_memory):
     while retry_count < max_retries:
         try:
             response = llm.invoke(messages)
-            llm_translation = response.content
+            llm_translation = response.translation
             corrected_llm_translation = correction(llm_translation, source_text)
             if len(source_tags_dict) >= 1:
                 if check_for_tags(corrected_llm_translation, source_tags_dict):
@@ -217,6 +232,7 @@ def chatGPT_improve_tm(row, translation_memory):
             time.sleep(retry_delay)
 
     error = f"::LLM_FAIL({retry_reason})::"
+    variables.trans_info["translation_failed"] += 1
     return error, prompt
  
 

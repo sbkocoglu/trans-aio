@@ -190,3 +190,11 @@ def check_termbase(source_text):
             print(e)
             pass  
     return relevant_glossary
+
+def is_link(segment: str) -> bool:
+    """
+    Checks if the segment is a link and only a link.
+    Returns True if the segment is a valid URL and nothing else, False otherwise.
+    """
+    pattern = r"^(https?://[^\s]+)$"
+    return bool(re.match(pattern, segment.strip()))

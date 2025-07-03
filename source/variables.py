@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-trans_version = "v1.0.0"
+trans_version = "v1.0.1"
 trans_icon = "img/icon.png"
 
 trans_info = {
@@ -19,6 +19,7 @@ trans_info = {
     "tm_match" : 0,
     "tm_match_partial" : 0,
     "segments_skipped" : 0,
+    "translation_failed" : 0,
     "token_count" : 0,
     "total_steps" : 3,
     "current_step" : 0,
